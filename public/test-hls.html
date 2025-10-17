@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test HLS.js</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+
+        video {
+            width: 100%;
+            max-width: 800px;
+            display: block;
+            margin: 20px auto;
+        }
+
+        .info {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #222;
+            border-radius: 8px;
+        }
+
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+
+        .success {
+            background: #0a0;
+            color: #fff;
+        }
+
+        .error {
+            background: #a00;
+            color: #fff;
+        }
+
+        .warning {
+            background: #aa0;
+            color: #000;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            background: #333;
+            border: 1px solid #555;
+            color: #fff;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: #0066cc;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #0052a3;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="info">
+        <h1>🎬 Test HLS.js Player</h1>
+        <p>Testez votre flux HLS ici</p>
+
+        <div id="status"></div>
+
+        <label for="streamUrl">URL du flux HLS (.m3u8):</label>
+        <input type="text" id="streamUrl" placeholder="https://example.com/stream.m3u8"
+            value="https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8">
+        <button onclick="loadStream()">Charger le flux</button>
+    </div>
+
+    <video id="video" controls></video>
+
+    <div class="info">
+        <h3>Logs:</h3>
+        <div id="logs" style="font-family: monospace; font-size: 12px;"></div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const statusDiv = document.getElementById('status');
+        const logsDiv = document.getElementById('logs');
+        let hls = null;
+
+        function log(message, type = 'info') {
+            const time = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${time}] ${message}`;
+            logEntry.style.color = type === 'error' ? '#f00' : type === 'success' ? '#0f0' : '#fff';
+            logsDiv.appendChild(logEntry);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function showStatus(message, type) {
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function loadStream() {
+            const streamUrl = document.getElementById('streamUrl').value;
+
+            if (!streamUrl) {
+                showStatus('❌ Veuillez entrer une URL de flux', 'error');
+                return;
+            }
+
+            log('🎬 Chargement du flux: ' + streamUrl);
+            showStatus('⏳ Chargement...', 'warning');
+
+            // Cleanup previous instance
+            if (hls) {
+                log('🧹 Nettoyage de l\'instance précédente');
+                hls.destroy();
+            }
+
+            // Check HLS.js support
+            if (typeof Hls === 'undefined') {
+                showStatus('❌ HLS.js n\'est pas chargé', 'error');
+                log('❌ HLS.js not loaded', 'error');
+                return;
+            }
+
+            log('✅ HLS.js version: ' + Hls.version, 'success');
+
+            if (Hls.isSupported()) {
+                log('✅ HLS.js est supporté', 'success');
+                showStatus('✅ HLS.js supporté, initialisation...', 'success');
+
+                hls = new Hls({
+                    debug: true,
+                    enableWorker: true,
+                    lowLatencyMode: true
+                });
+
+                hls.loadSource(streamUrl);
+                hls.attachMedia(video);
+
+                hls.on(Hls.Events.MANIFEST_PARSED, function () {
+                    log('✅ Manifest parsé avec succès', 'success');
+                    showStatus('✅ Flux chargé avec succès!', 'success');
+                    video.play().catch(err => {
+                        log('⚠️ Autoplay bloqué: ' + err.message, 'error');
+                        showStatus('⚠️ Cliquez sur play pour démarrer', 'warning');
+                    });
+                });
+
+                hls.on(Hls.Events.ERROR, function (event, data) {
+                    log('❌ Erreur HLS: ' + data.type + ' - ' + data.details, 'error');
+                    if (data.fatal) {
+                        showStatus('❌ Erreur fatale: ' + data.details, 'error');
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                log('❌ Erreur réseau fatale', 'error');
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                log('❌ Erreur média fatale', 'error');
+                                break;
+                            default:
+                                log('❌ Erreur fatale non récupérable', 'error');
+                                break;
+                        }
+                    }
+                });
+
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                log('✅ Support HLS natif (Safari/iOS)', 'success');
+                showStatus('✅ Support HLS natif détecté', 'success');
+                video.src = streamUrl;
+                video.addEventListener('loadeddata', function () {
+                    log('✅ Vidéo chargée (natif)', 'success');
+                    showStatus('✅ Flux chargé avec succès!', 'success');
+                });
+                video.play().catch(err => {
+                    log('⚠️ Autoplay bloqué: ' + err.message, 'error');
+                    showStatus('⚠️ Cliquez sur play pour démarrer', 'warning');
+                });
+            } else {
+                log('❌ HLS non supporté sur cet appareil', 'error');
+                showStatus('❌ HLS non supporté sur cet appareil', 'error');
+            }
+        }
+
+        // Test initial
+        log('🚀 Page chargée');
+        if (typeof Hls !== 'undefined') {
+            log('✅ HLS.js chargé, version: ' + Hls.version, 'success');
+            showStatus('✅ HLS.js prêt (version ' + Hls.version + ')', 'success');
+        } else {
+            log('❌ HLS.js non chargé', 'error');
+            showStatus('❌ HLS.js non chargé', 'error');
+        }
+    </script>
+</body>
+
+</html>

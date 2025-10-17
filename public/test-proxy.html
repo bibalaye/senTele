@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Proxy HLS</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+        video {
+            width: 100%;
+            max-width: 800px;
+            display: block;
+            margin: 20px auto;
+        }
+        .info {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #222;
+            border-radius: 8px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #0066cc;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0052a3;
+        }
+        #logs {
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            background: #111;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .log-success { color: #0f0; }
+        .log-error { color: #f00; }
+        .log-warning { color: #ff0; }
+    </style>
+</head>
+<body>
+    <div class="info">
+        <h1>🎬 Test Proxy HLS</h1>
+        <p>Test du proxy Laravel pour résoudre les problèmes CORS</p>
+        <div id="status">⏳ Prêt à tester</div>
+        
+        <div style="margin-top: 20px;">
+            <button onclick="testDirect()">Test Direct (CORS Error)</button>
+            <button onclick="testProxy()">Test avec Proxy Laravel</button>
+        </div>
+    </div>
+
+    <video id="video" controls></video>
+
+    <div class="info">
+        <h3>Logs:</h3>
+        <div id="logs"></div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const statusDiv = document.getElementById('status');
+        const logsDiv = document.getElementById('logs');
+        let currentHls = null;
+
+        function log(message, type = 'info') {
+            const time = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${time}] ${message}`;
+            logEntry.className = `log-${type}`;
+            logsDiv.appendChild(logEntry);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function updateStatus(message, type = 'info') {
+            const icons = { success: '✅', error: '❌', warning: '⚠️', info: '⏳' };
+            statusDiv.textContent = `${icons[type]} ${message}`;
+        }
+
+        function cleanup() {
+            if (currentHls) {
+                currentHls.destroy();
+                currentHls = null;
+            }
+            video.pause();
+            video.src = '';
+        }
+
+        function testDirect() {
+            cleanup();
+            logsDiv.innerHTML = '';
+            log('🧪 Test avec URL directe (devrait échouer avec CORS)', 'warning');
+            
+            const directUrl = 'https://cdn.france24.com/live/F24_FR_HI_HLS/live_web.m3u8';
+            loadStream(directUrl, 'Direct');
+        }
+
+        function testProxy() {
+            cleanup();
+            logsDiv.innerHTML = '';
+            log('🧪 Test avec Proxy Laravel', 'info');
+            
+            // Vous devez être connecté pour que ça marche
+            // Remplacez {channel_id} par un vrai ID de votre base
+            const proxyUrl = '/stream/proxy/1';
+            loadStream(proxyUrl, 'Proxy');
+        }
+
+        function loadStream(streamUrl, method) {
+            updateStatus(`Chargement (${method})...`, 'info');
+            log(`📺 URL: ${streamUrl}`, 'info');
+
+            if (typeof Hls === 'undefined') {
+                log('❌ HLS.js non chargé', 'error');
+                updateStatus('HLS.js non chargé', 'error');
+                return;
+            }
+
+            if (Hls.isSupported()) {
+                log('✅ HLS.js supporté', 'success');
+                
+                const hls = new Hls({
+                    debug: true,
+                    enableWorker: true,
+                    lowLatencyMode: true
+                });
+
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    log(`✅ Manifest chargé avec succès (${method})`, 'success');
+                    updateStatus(`Flux chargé (${method})!`, 'success');
+                    
+                    video.play()
+                        .then(() => log('▶️ Lecture démarrée', 'success'))
+                        .catch(err => log('⚠️ Autoplay bloqué', 'warning'));
+                });
+
+                hls.on(Hls.Events.ERROR, function(event, data) {
+                    log(`❌ Erreur (${method}): ${data.type} - ${data.details}`, 'error');
+                    
+                    if (data.fatal) {
+                        updateStatus(`Erreur fatale (${method})`, 'error');
+                        
+                        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                            log('🔄 Tentative de récupération...', 'warning');
+                            hls.startLoad();
+                        }
+                    }
+                });
+
+                hls.loadSource(streamUrl);
+                hls.attachMedia(video);
+                currentHls = hls;
+                
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                log('✅ Support HLS natif', 'success');
+                video.src = streamUrl;
+                video.play()
+                    .then(() => log('▶️ Lecture démarrée (natif)', 'success'))
+                    .catch(err => log('⚠️ Autoplay bloqué', 'warning'));
+            }
+        }
+
+        log('🚀 Page chargée - Cliquez sur un bouton pour tester', 'info');
+    </script>
+</body>
+</html>

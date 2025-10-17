@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Lecteur Simple</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+
+        video {
+            width: 100%;
+            max-width: 800px;
+            display: block;
+            margin: 20px auto;
+        }
+
+        .info {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #222;
+            border-radius: 8px;
+        }
+
+        #logs {
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            background: #111;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        .log-success {
+            color: #0f0;
+        }
+
+        .log-error {
+            color: #f00;
+        }
+
+        .log-warning {
+            color: #ff0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="info">
+        <h1>🎬 Test Lecteur HLS - France 24</h1>
+        <p>Test avec une vraie chaîne de votre base de données</p>
+        <div id="status">⏳ Initialisation...</div>
+    </div>
+
+    <video id="video" controls></video>
+
+    <div class="info">
+        <h3>Logs:</h3>
+        <div id="logs"></div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const statusDiv = document.getElementById('status');
+        const logsDiv = document.getElementById('logs');
+
+        // URL de test - France 24
+        const streamUrl = 'https://cdn.france24.com/live/F24_FR_HI_HLS/live_web.m3u8';
+
+        function log(message, type = 'info') {
+            const time = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${time}] ${message}`;
+            logEntry.className = `log-${type}`;
+            logsDiv.appendChild(logEntry);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function updateStatus(message, type = 'info') {
+            const icons = { success: '✅', error: '❌', warning: '⚠️', info: '⏳' };
+            statusDiv.textContent = `${icons[type]} ${message}`;
+        }
+
+        log('🚀 Page chargée', 'info');
+        log('📺 URL du stream: ' + streamUrl, 'info');
+
+        // Vérifier HLS.js
+        if (typeof Hls === 'undefined') {
+            log('❌ HLS.js non chargé', 'error');
+            updateStatus('HLS.js non chargé', 'error');
+        } else {
+            log('✅ HLS.js version: ' + Hls.version, 'success');
+
+            if (Hls.isSupported()) {
+                log('✅ HLS.js supporté par ce navigateur', 'success');
+                updateStatus('Chargement du flux...', 'info');
+
+                const hls = new Hls({
+                    debug: true,
+                    enableWorker: true,
+                    lowLatencyMode: true
+                });
+
+                hls.on(Hls.Events.MANIFEST_PARSED, function () {
+                    log('✅ Manifest parsé avec succès', 'success');
+                    updateStatus('Flux chargé avec succès!', 'success');
+
+                    video.play()
+                        .then(() => {
+                            log('▶️ Lecture démarrée', 'success');
+                            updateStatus('Lecture en cours', 'success');
+                        })
+                        .catch(err => {
+                            log('⚠️ Autoplay bloqué: ' + err.message, 'warning');
+                            updateStatus('Cliquez sur play pour démarrer', 'warning');
+                        });
+                });
+
+                hls.on(Hls.Events.ERROR, function (event, data) {
+                    log('❌ Erreur: ' + data.type + ' - ' + data.details, 'error');
+
+                    if (data.fatal) {
+                        updateStatus('Erreur fatale: ' + data.details, 'error');
+
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                log('🔄 Tentative de récupération réseau...', 'warning');
+                                hls.startLoad();
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                log('🔄 Tentative de récupération média...', 'warning');
+                                hls.recoverMediaError();
+                                break;
+                            default:
+                                log('❌ Erreur non récupérable', 'error');
+                                break;
+                        }
+                    }
+                });
+
+                hls.loadSource(streamUrl);
+                hls.attachMedia(video);
+
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                log('✅ Support HLS natif (Safari/iOS)', 'success');
+                updateStatus('Chargement (natif)...', 'info');
+
+                video.src = streamUrl;
+                video.addEventListener('loadeddata', function () {
+                    log('✅ Vidéo chargée (natif)', 'success');
+                    updateStatus('Flux chargé avec succès!', 'success');
+                });
+
+                video.play()
+                    .then(() => {
+                        log('▶️ Lecture démarrée (natif)', 'success');
+                        updateStatus('Lecture en cours', 'success');
+                    })
+                    .catch(err => {
+                        log('⚠️ Autoplay bloqué: ' + err.message, 'warning');
+                        updateStatus('Cliquez sur play pour démarrer', 'warning');
+                    });
+            } else {
+                log('❌ HLS non supporté sur cet appareil', 'error');
+                updateStatus('HLS non supporté', 'error');
+            }
+        }
+    </script>
+</body>
+
+</html>

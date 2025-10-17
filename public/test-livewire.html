@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Livewire Click</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+        .card {
+            background: #2a2a2a;
+            padding: 20px;
+            margin: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .card:hover {
+            background: #3a3a3a;
+            transform: scale(1.02);
+        }
+        .info {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .log {
+            background: #1a1a1a;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success { color: #0f0; }
+        .error { color: #f00; }
+    </style>
+</head>
+<body>
+    <div class="info">
+        <h1>🧪 Test Livewire Click</h1>
+        <p>Diagnostic pour comprendre pourquoi le clic ne fonctionne pas</p>
+    </div>
+
+    <div class="info">
+        <h3>Tests à faire :</h3>
+        <ol>
+            <li>Ouvrir la console (F12)</li>
+            <li>Aller sur <code>http://localhost/channels</code></li>
+            <li>Cliquer sur une carte de chaîne</li>
+            <li>Copier/coller les messages de la console ici</li>
+        </ol>
+    </div>
+
+    <div class="info">
+        <h3>Vérifications dans la console :</h3>
+        <div class="log">
+            <div>// Vérifier que Livewire est chargé</div>
+            <div class="success">console.log(typeof Livewire); // Devrait afficher "object"</div>
+            <br>
+            <div>// Vérifier les composants Livewire</div>
+            <div class="success">console.log(Livewire.all()); // Devrait afficher un tableau</div>
+            <br>
+            <div>// Vérifier les erreurs</div>
+            <div class="success">// Regarder s'il y a des erreurs en rouge</div>
+        </div>
+    </div>
+
+    <div class="info">
+        <h3>Problèmes possibles :</h3>
+        
+        <div class="card">
+            <h4>❌ Livewire non chargé</h4>
+            <p><strong>Symptôme :</strong> <code>Livewire is not defined</code></p>
+            <p><strong>Solution :</strong> Vérifier que <code>@vite</code> est dans le layout</p>
+        </div>
+
+        <div class="card">
+            <h4>❌ Erreur JavaScript</h4>
+            <p><strong>Symptôme :</strong> Erreur en rouge dans la console</p>
+            <p><strong>Solution :</strong> Corriger l'erreur JavaScript</p>
+        </div>
+
+        <div class="card">
+            <h4>❌ wire:click mal formé</h4>
+            <p><strong>Symptôme :</strong> Aucune erreur mais rien ne se passe</p>
+            <p><strong>Solution :</strong> Vérifier la syntaxe du wire:click</p>
+        </div>
+
+        <div class="card">
+            <h4>❌ Composant non initialisé</h4>
+            <p><strong>Symptôme :</strong> <code>Cannot read property 'call' of undefined</code></p>
+            <p><strong>Solution :</strong> Vérifier que le composant Livewire est bien monté</p>
+        </div>
+    </div>
+
+    <div class="info">
+        <h3>Script de diagnostic :</h3>
+        <p>Copiez/collez ce code dans la console de <code>/channels</code> :</p>
+        <div class="log">
+            <pre style="color: #0f0;">
+// Diagnostic complet
+console.log('=== DIAGNOSTIC LIVEWIRE ===');
+console.log('1. Livewire chargé ?', typeof Livewire !== 'undefined' ? '✅' : '❌');
+console.log('2. Composants Livewire :', Livewire?.all()?.length || 0);
+console.log('3. HLS.js chargé ?', typeof Hls !== 'undefined' ? '✅' : '❌');
+
+// Tester le clic manuellement
+const firstCard = document.querySelector('[wire\\:click*="selectChannel"]');
+console.log('4. Carte trouvée ?', firstCard ? '✅' : '❌');
+if (firstCard) {
+    console.log('5. Attribut wire:click :', firstCard.getAttribute('wire:click'));
+    console.log('6. Test de clic...');
+    firstCard.click();
+}
+            </pre>
+        </div>
+    </div>
+
+    <div class="info">
+        <h3>📸 Capture d'écran attendue :</h3>
+        <p>Après avoir exécuté le script ci-dessus, vous devriez voir :</p>
+        <div class="log">
+            <div class="success">=== DIAGNOSTIC LIVEWIRE ===</div>
+            <div class="success">1. Livewire chargé ? ✅</div>
+            <div class="success">2. Composants Livewire : 1</div>
+            <div class="success">3. HLS.js chargé ? ✅</div>
+            <div class="success">4. Carte trouvée ? ✅</div>
+            <div class="success">5. Attribut wire:click : selectChannel(123)</div>
+            <div class="success">6. Test de clic...</div>
+        </div>
+    </div>
+
+    <script>
+        // Auto-test si on est sur la bonne page
+        if (window.location.pathname === '/channels') {
+            setTimeout(() => {
+                console.log('=== AUTO-DIAGNOSTIC ===');
+                console.log('Livewire:', typeof Livewire !== 'undefined' ? '✅' : '❌');
+                console.log('HLS.js:', typeof Hls !== 'undefined' ? '✅' : '❌');
+                
+                const cards = document.querySelectorAll('[wire\\:click*="selectChannel"]');
+                console.log('Cartes trouvées:', cards.length);
+                
+                if (cards.length > 0) {
+                    console.log('Première carte:', cards[0]);
+                    console.log('wire:click:', cards[0].getAttribute('wire:click'));
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

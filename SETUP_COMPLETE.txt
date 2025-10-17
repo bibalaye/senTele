@@ -1,0 +1,48 @@
+✅ senTele V2 - Plateforme IPTV
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚀 DÉMARRAGE
+
+1. php artisan serve
+2. http://localhost:8000
+3. Login : admin@sentele.com / password
+4. Cliquer sur "Chaînes en direct" dans le menu
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✨ FONCTIONNALITÉS
+
+✅ 8 chaînes IPTV en direct
+✅ Design Livewire Flux (cohérent avec le dashboard)
+✅ Recherche en temps réel
+✅ Filtres par catégorie
+✅ Lecteur vidéo HLS modal
+✅ Système de favoris
+✅ PWA installable
+✅ Sidebar navigation
+✅ Mode sombre
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎨 DESIGN
+
+• Utilise Livewire Flux (même style que le dashboard)
+• Cartes avec flux:card
+• Badges flux:badge
+• Boutons flux:button
+• Modal flux:modal
+• Icônes flux:icon
+• Layout avec sidebar
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📱 INSTALLER LA PWA
+
+Android : Menu > "Ajouter à l'écran d'accueil"
+iOS     : Partager > "Sur l'écran d'accueil"
+PC      : Bouton "Installer l'app" (apparaît automatiquement)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎬 Profitez de votre plateforme IPTV ! 📺✨

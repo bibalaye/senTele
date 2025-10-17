@@ -1,0 +1,27 @@
+<svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a1a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0a0a0a;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Fond -->
+  <rect width="512" height="512" fill="url(#grad)" rx="80"/>
+  
+  <!-- Écran TV -->
+  <rect x="96" y="128" width="320" height="200" fill="#2a2a2a" rx="10"/>
+  <rect x="106" y="138" width="300" height="180" fill="#1a1a1a" rx="5"/>
+  
+  <!-- Signal -->
+  <circle cx="256" cy="228" r="8" fill="#ff4433"/>
+  <circle cx="236" cy="228" r="6" fill="#ff6655" opacity="0.7"/>
+  <circle cx="276" cy="228" r="6" fill="#ff6655" opacity="0.7"/>
+  
+  <!-- Support -->
+  <rect x="226" y="328" width="60" height="20" fill="#2a2a2a" rx="5"/>
+  <rect x="176" y="348" width="160" height="12" fill="#2a2a2a" rx="6"/>
+  
+  <!-- Texte -->
+  <text x="256" y="420" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="#ffffff" text-anchor="middle">senTele</text>
+</svg>
