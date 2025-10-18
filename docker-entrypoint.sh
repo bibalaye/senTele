@@ -4,42 +4,64 @@
 echo "Waiting for database..."
 sleep 5
 
-# Réinitialiser la base de données (drop toutes les tables et recréer)
-echo "Resetting database..."
-php artisan migrate:fresh --force
+# Vérifier si des migrations sont en attente
+echo "Checking for pending migrations..."
+PENDING_MIGRATIONS=$(php artisan migrate:status --pending 2>&1 | grep -c "Pending" || echo "0")
 
-# Exécuter les seeders (UserSeeder et ChannelSeeder via DatabaseSeeder)
-echo "Running database seeders..."
-php artisan db:seed --force
+if [ "$PENDING_MIGRATIONS" -gt "0" ] || [ ! -f "/app/storage/.db_initialized" ]; then
+    echo "⚠️  Pending migrations detected or first deployment"
+    
+    # Si c'est le premier déploiement, faire un fresh
+    if [ ! -f "/app/storage/.db_initialized" ]; then
+        echo "🔄 First deployment - Running fresh migrations..."
+        php artisan migrate:fresh --force
+        
+        # Exécuter les seeders
+        echo "Running database seeders..."
+        php artisan db:seed --force
+        php artisan db:seed --class=SubscriptionPlanSeeder --force
+        php artisan db:seed --class=PromoCodeSeeder --force
+        
+        # Configurer l'utilisateur admin
+        echo "Setting up admin user..."
+        php artisan tinker --execute="
+        \$user = App\Models\User::where('email', 'admin@sentele.com')->first();
+        if (\$user) {
+            \$user->is_admin = true;
+            \$user->save();
+            echo '✅ Admin user configured';
+        }
+        "
+        
+        # Importer des chaînes de test
+        echo "Importing test channels..."
+        php artisan channels:import https://iptv-org.github.io/iptv/categories/sports.m3u --category=Sports --plan=basic || true
+        php artisan channels:import https://iptv-org.github.io/iptv/categories/news.m3u --category=Actualités --plan=basic || true
+        php artisan channels:import https://iptv-org.github.io/iptv/categories/entertainment.m3u --category=Divertissement --plan=basic || true
+        
+        # Marquer comme initialisé
+        touch /app/storage/.db_initialized
+        echo "✅ Database initialized successfully"
+    else
+        # Sinon, juste exécuter les nouvelles migrations
+        echo "🔄 Running pending migrations..."
+        php artisan migrate --force
+        echo "✅ Migrations completed"
+    fi
+else
+    echo "✅ No pending migrations - database is up to date"
+fi
 
-# Exécuter les seeders additionnels pour les plans et codes promo
-echo "Running subscription plans seeder..."
-php artisan db:seed --class=SubscriptionPlanSeeder --force
-
-echo "Running promo codes seeder..."
-php artisan db:seed --class=PromoCodeSeeder --force
-
-# Configurer l'utilisateur admin
-echo "Setting up admin user..."
+# Toujours s'assurer que l'admin existe et est configuré
+echo "Verifying admin user..."
 php artisan tinker --execute="
 \$user = App\Models\User::where('email', 'admin@sentele.com')->first();
-if (\$user) {
+if (\$user && !\$user->is_admin) {
     \$user->is_admin = true;
     \$user->save();
-    echo '✅ Admin user configured successfully';
+    echo '✅ Admin status updated';
 }
-"
-
-# Importer des chaînes de test
-echo "Importing test channels..."
-echo "Importing sports channels..."
-php artisan channels:import https://iptv-org.github.io/iptv/categories/sports.m3u --category=Sports --plan=basic || echo "Sports import failed, continuing..."
-
-echo "Importing news channels..."
-php artisan channels:import https://iptv-org.github.io/iptv/categories/news.m3u --category=Actualités --plan=basic || echo "News import failed, continuing..."
-
-echo "Importing entertainment channels..."
-php artisan channels:import https://iptv-org.github.io/iptv/categories/entertainment.m3u --category=Divertissement --plan=basic || echo "Entertainment import failed, continuing..."
+" || true
 
 # Créer le lien symbolique pour le storage
 echo "Creating storage link..."
