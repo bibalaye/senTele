@@ -8,9 +8,16 @@ sleep 5
 echo "Running migrations..."
 php artisan migrate --force
 
-# Exécuter les seeders
-echo "Running seeders..."
+# Exécuter les seeders (UserSeeder et ChannelSeeder via DatabaseSeeder)
+echo "Running database seeders..."
 php artisan db:seed --force
+
+# Exécuter les seeders additionnels pour les plans et codes promo
+echo "Running subscription plans seeder..."
+php artisan db:seed --class=SubscriptionPlanSeeder --force
+
+echo "Running promo codes seeder..."
+php artisan db:seed --class=PromoCodeSeeder --force
 
 # Optimiser l'application
 echo "Optimizing application..."
