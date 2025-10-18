@@ -4,9 +4,9 @@
 echo "Waiting for database..."
 sleep 5
 
-# Exécuter les migrations
-echo "Running migrations..."
-php artisan migrate --force
+# Réinitialiser la base de données (drop toutes les tables et recréer)
+echo "Resetting database..."
+php artisan migrate:fresh --force
 
 # Exécuter les seeders (UserSeeder et ChannelSeeder via DatabaseSeeder)
 echo "Running database seeders..."
@@ -23,8 +23,16 @@ php artisan db:seed --class=PromoCodeSeeder --force
 echo "Creating storage link..."
 php artisan storage:link || true
 
+# Vérifier que les assets existent
+echo "Checking assets..."
+if [ ! -d "/app/public/build" ]; then
+    echo "WARNING: /app/public/build directory not found! Running npm build..."
+    npm run build
+fi
+
 # Optimiser l'application
 echo "Optimizing application..."
+php artisan config:clear
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
