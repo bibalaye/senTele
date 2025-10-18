@@ -29,12 +29,34 @@ class ChannelList extends Component
         
         $channel = Channel::find($channelId);
         
-        if ($channel && $channel->is_active) {
-            $this->selectedChannel = $channel;
-            
-            // Dispatch event pour initialiser le lecteur côté JS
-            $this->dispatch('channel-selected', channelId: $channelId);
+        if (!$channel || !$channel->is_active) {
+            $this->playerError = true;
+            $this->isLoading = false;
+            session()->flash('error', 'Cette chaîne n\'est pas disponible.');
+            return;
         }
+        
+        // Vérifier si l'utilisateur peut accéder à cette chaîne
+        $user = auth()->user();
+        if ($user && !$user->canAccessChannel($channel)) {
+            $this->playerError = true;
+            $this->isLoading = false;
+            session()->flash('error', 'Vous devez souscrire à un plan supérieur pour accéder à cette chaîne.');
+            return;
+        }
+        
+        // Si non connecté, vérifier si c'est une chaîne gratuite
+        if (!$user && !$channel->subscriptionPlans()->where('price', 0)->exists()) {
+            $this->playerError = true;
+            $this->isLoading = false;
+            session()->flash('error', 'Veuillez vous connecter pour accéder à cette chaîne.');
+            return;
+        }
+        
+        $this->selectedChannel = $channel;
+        
+        // Dispatch event pour initialiser le lecteur côté JS
+        $this->dispatch('channel-selected', channelId: $channelId);
         
         $this->isLoading = false;
     }
@@ -110,11 +132,34 @@ class ChannelList extends Component
     }
 
     /**
-     * Render avec optimisations PWA
+     * Render avec optimisations PWA et filtrage par plan d'abonnement
      */
     public function render()
     {
+        $user = auth()->user();
         $query = Channel::where('is_active', true);
+
+        // Filtrer par plan d'abonnement de l'utilisateur
+        if ($user) {
+            $subscription = $user->activeSubscription;
+            
+            if ($subscription) {
+                // Utilisateur avec abonnement actif - montrer les chaînes de son plan
+                $query->whereHas('subscriptionPlans', function($q) use ($subscription) {
+                    $q->where('subscription_plan_id', $subscription->subscription_plan_id);
+                });
+            } else {
+                // Utilisateur sans abonnement - montrer uniquement les chaînes gratuites
+                $query->whereHas('subscriptionPlans', function($q) {
+                    $q->where('price', 0);
+                });
+            }
+        } else {
+            // Utilisateur non connecté - montrer uniquement les chaînes gratuites
+            $query->whereHas('subscriptionPlans', function($q) {
+                $q->where('price', 0);
+            });
+        }
 
         // Recherche optimisée
         if ($this->search) {
@@ -130,22 +175,45 @@ class ChannelList extends Component
             $query->where('category', $this->category);
         }
 
-        // Récupérer les chaînes avec mise en cache
+        // Récupérer les chaînes (pas de cache car dépend de l'utilisateur)
+        $userId = $user ? $user->id : 'guest';
+        $subscriptionId = $user && $user->activeSubscription ? $user->activeSubscription->subscription_plan_id : 'free';
+        
         $channels = cache()->remember(
-            "channels.{$this->search}.{$this->category}",
+            "channels.{$userId}.{$subscriptionId}.{$this->search}.{$this->category}",
             now()->addMinutes(5),
             fn() => $query->orderBy('name')->get()
         );
         
-        // Récupérer les catégories avec mise en cache
+        // Récupérer les catégories disponibles pour l'utilisateur
         $categories = cache()->remember(
-            'channel.categories',
+            "channel.categories.{$userId}.{$subscriptionId}",
             now()->addHours(1),
-            fn() => Channel::where('is_active', true)
-                ->distinct()
-                ->pluck('category')
-                ->filter()
-                ->sort()
+            function() use ($user) {
+                $query = Channel::where('is_active', true);
+                
+                if ($user) {
+                    $subscription = $user->activeSubscription;
+                    if ($subscription) {
+                        $query->whereHas('subscriptionPlans', function($q) use ($subscription) {
+                            $q->where('subscription_plan_id', $subscription->subscription_plan_id);
+                        });
+                    } else {
+                        $query->whereHas('subscriptionPlans', function($q) {
+                            $q->where('price', 0);
+                        });
+                    }
+                } else {
+                    $query->whereHas('subscriptionPlans', function($q) {
+                        $q->where('price', 0);
+                    });
+                }
+                
+                return $query->distinct()
+                    ->pluck('category')
+                    ->filter()
+                    ->sort();
+            }
         );
 
         return view('livewire.channel-list', [
