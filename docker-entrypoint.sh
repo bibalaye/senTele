@@ -19,6 +19,28 @@ php artisan db:seed --class=SubscriptionPlanSeeder --force
 echo "Running promo codes seeder..."
 php artisan db:seed --class=PromoCodeSeeder --force
 
+# Configurer l'utilisateur admin
+echo "Setting up admin user..."
+php artisan tinker --execute="
+\$user = App\Models\User::where('email', 'admin@sentele.com')->first();
+if (\$user) {
+    \$user->is_admin = true;
+    \$user->save();
+    echo '✅ Admin user configured successfully';
+}
+"
+
+# Importer des chaînes de test
+echo "Importing test channels..."
+echo "Importing sports channels..."
+php artisan channels:import https://iptv-org.github.io/iptv/categories/sports.m3u --category=Sports --plan=basic || echo "Sports import failed, continuing..."
+
+echo "Importing news channels..."
+php artisan channels:import https://iptv-org.github.io/iptv/categories/news.m3u --category=Actualités --plan=basic || echo "News import failed, continuing..."
+
+echo "Importing entertainment channels..."
+php artisan channels:import https://iptv-org.github.io/iptv/categories/entertainment.m3u --category=Divertissement --plan=basic || echo "Entertainment import failed, continuing..."
+
 # Créer le lien symbolique pour le storage
 echo "Creating storage link..."
 php artisan storage:link || true
