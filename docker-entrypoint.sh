@@ -19,11 +19,20 @@ php artisan db:seed --class=SubscriptionPlanSeeder --force
 echo "Running promo codes seeder..."
 php artisan db:seed --class=PromoCodeSeeder --force
 
+# Créer le lien symbolique pour le storage
+echo "Creating storage link..."
+php artisan storage:link || true
+
 # Optimiser l'application
 echo "Optimizing application..."
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
+
+# S'assurer que les permissions sont correctes
+echo "Setting permissions..."
+chmod -R 755 /app/public
+chmod -R 775 /app/storage /app/bootstrap/cache
 
 # Démarrer l'application
 echo "Starting application..."
