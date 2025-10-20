@@ -162,6 +162,10 @@
                         </td>
                         <td class="px-6 py-4 text-right">
                             <div class="flex justify-end space-x-2">
+                                <button wire:click="testChannel({{ $channel->id }})" 
+                                    class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm transition-colors">
+                                    Tester
+                                </button>
                                 <button wire:click="editChannel({{ $channel->id }})" 
                                     class="btn-primary text-sm">
                                     Modifier
@@ -188,4 +192,120 @@
     <div class="mt-6">
         {{ $channels->links() }}
     </div>
+
+    <!-- Test Player Modal -->
+    @if($testingChannel)
+        <div class="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm flex items-center justify-center p-4" wire:click="closeTestPlayer">
+            <div class="bg-white dark:bg-gray-900 rounded-lg max-w-4xl w-full overflow-hidden shadow-2xl" wire:click.stop>
+                <!-- Video Player -->
+                <div class="relative aspect-video bg-black">
+                    <video 
+                        id="test-video-player"
+                        class="w-full h-full"
+                        controls
+                        autoplay
+                        wire:ignore
+                    ></video>
+
+                    <!-- Close Button -->
+                    <button 
+                        wire:click="closeTestPlayer"
+                        class="absolute top-4 right-4 w-10 h-10 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/80 transition-colors z-20"
+                    >
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Channel Info -->
+                <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="font-semibold text-gray-900 dark:text-white">{{ $testingChannel->name }}</h3>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">{{ $testingChannel->category }} • {{ $testingChannel->country }}</p>
+                        </div>
+                        <span class="px-3 py-1 bg-red-600 text-white text-xs font-bold rounded flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
+                            TEST
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @assets
+        <script>
+            const streamUrl = @js(route('stream.proxy', ['channel' => $testingChannel->id]));
+            const channelName = @js($testingChannel->name);
+            
+            console.log('🎬 Testing:', channelName);
+            console.log('📺 URL:', streamUrl);
+            
+            const initTestPlayer = () => {
+                const video = document.getElementById('test-video-player');
+                
+                if (!video) {
+                    console.error('❌ Video not found');
+                    setTimeout(initTestPlayer, 100);
+                    return;
+                }
+                
+                console.log('✅ Video found');
+                
+                // Cleanup
+                if (window.testHls) {
+                    window.testHls.destroy();
+                    window.testHls = null;
+                }
+                
+                if (typeof Hls === 'undefined') {
+                    console.error('❌ HLS.js not loaded');
+                    alert('HLS.js non chargé');
+                    return;
+                }
+                
+                console.log('✅ HLS.js:', Hls.version);
+                
+                if (Hls.isSupported()) {
+                    console.log('✅ HLS supported');
+                    const hls = new Hls({ debug: true });
+                    
+                    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                        console.log('✅ Stream ready');
+                        video.play()
+                            .then(() => console.log('▶️ Playing'))
+                            .catch(e => console.log('⚠️ Autoplay:', e.message));
+                    });
+                    
+                    hls.on(Hls.Events.ERROR, (event, data) => {
+                        console.error('❌ Error:', data.type, data.details);
+                        if (data.fatal) {
+                            if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                                hls.startLoad();
+                            } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+                                hls.recoverMediaError();
+                            }
+                        }
+                    });
+                    
+                    console.log('📡 Loading...');
+                    hls.loadSource(streamUrl);
+                    hls.attachMedia(video);
+                    window.testHls = hls;
+                    
+                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                    console.log('✅ Native HLS');
+                    video.src = streamUrl;
+                    video.play().catch(e => console.log('⚠️ Autoplay:', e.message));
+                } else {
+                    console.error('❌ HLS not supported');
+                    alert('HLS non supporté');
+                }
+            };
+            
+            setTimeout(initTestPlayer, 300);
+        </script>
+        @endassets
+    @endif
 </div>

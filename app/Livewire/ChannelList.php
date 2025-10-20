@@ -16,22 +16,15 @@ class ChannelList extends Component
     public $category = '';
     
     public $selectedChannel = null;
-    public $playerError = false;
-    public $isLoading = false;
 
     /**
-     * Sélectionner une chaîne et initialiser le lecteur HLS
+     * Sélectionner une chaîne et initialiser le lecteur HLS (selon Plan.md)
      */
     public function selectChannel($channelId)
     {
-        $this->isLoading = true;
-        $this->playerError = false;
-        
-        $channel = Channel::find($channelId);
+        $channel = Channel::with('subscriptionPlans')->find($channelId);
         
         if (!$channel || !$channel->is_active) {
-            $this->playerError = true;
-            $this->isLoading = false;
             session()->flash('error', 'Cette chaîne n\'est pas disponible.');
             return;
         }
@@ -39,61 +32,29 @@ class ChannelList extends Component
         // Vérifier si l'utilisateur peut accéder à cette chaîne
         $user = auth()->user();
         if ($user && !$user->canAccessChannel($channel)) {
-            $this->playerError = true;
-            $this->isLoading = false;
             session()->flash('error', 'Vous devez souscrire à un plan supérieur pour accéder à cette chaîne.');
             return;
         }
         
         // Si non connecté, vérifier si c'est une chaîne gratuite
         if (!$user && !$channel->subscriptionPlans()->where('price', 0)->exists()) {
-            $this->playerError = true;
-            $this->isLoading = false;
             session()->flash('error', 'Veuillez vous connecter pour accéder à cette chaîne.');
             return;
         }
         
         $this->selectedChannel = $channel;
         
-        // Dispatch event pour initialiser le lecteur côté JS
-        $this->dispatch('channel-selected', channelId: $channelId);
-        
-        $this->isLoading = false;
+        // Incrémenter le compteur de vues
+        $channel->incrementViews();
     }
 
     /**
-     * Fermer le lecteur et nettoyer les ressources
+     * Fermer le lecteur
      */
     public function closePlayer()
     {
-        // Dispatch event pour détruire le lecteur HLS côté JS
-        $this->dispatch('player-closing');
-        
         $this->selectedChannel = null;
-        $this->playerError = false;
-        $this->isLoading = false;
-    }
-
-    /**
-     * Gérer les erreurs du lecteur
-     */
-    #[On('player-error')]
-    public function handlePlayerError()
-    {
-        $this->playerError = true;
-        $this->isLoading = false;
-    }
-
-    /**
-     * Réessayer de charger le flux
-     */
-    public function retryStream()
-    {
-        if ($this->selectedChannel) {
-            $channelId = $this->selectedChannel->id;
-            $this->closePlayer();
-            $this->selectChannel($channelId);
-        }
+        $this->dispatch('player-closed');
     }
 
     /**
@@ -116,20 +77,7 @@ class ChannelList extends Component
         }
     }
 
-    /**
-     * Obtenir l'URL sécurisée du stream (proxy Laravel)
-     */
-    public function getSecureStreamUrl($channelId)
-    {
-        $channel = Channel::find($channelId);
-        
-        if (!$channel) {
-            return null;
-        }
 
-        // Utiliser le proxy Laravel pour résoudre les problèmes CORS
-        return route('stream.proxy', ['channel' => $channelId]);
-    }
 
     /**
      * Render avec optimisations PWA et filtrage par plan d'abonnement

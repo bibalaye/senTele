@@ -16,6 +16,7 @@ class ChannelManagement extends Component
     public $filterStatus = 'all';
     
     public $editingChannel = null;
+    public $testingChannel = null;
     public $name = '';
     public $logo = '';
     public $country = '';
@@ -80,6 +81,17 @@ class ChannelManagement extends Component
     {
         $channel = Channel::findOrFail($channelId);
         $channel->update(['is_active' => !$channel->is_active]);
+    }
+
+    public function testChannel($channelId)
+    {
+        $this->testingChannel = Channel::findOrFail($channelId);
+    }
+
+    public function closeTestPlayer()
+    {
+        $this->testingChannel = null;
+        $this->dispatch('test-player-closed');
     }
 
     public function render()
